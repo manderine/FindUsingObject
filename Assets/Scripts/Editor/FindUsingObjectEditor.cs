@@ -1,4 +1,4 @@
-﻿//#define NGUI_USED
+﻿#define NGUI_USED
 
 using UnityEngine;
 using UnityEditor;
@@ -552,7 +552,35 @@ public class FindUsingObjectEditor : EditorWindow {
 						continue;
 					}
 
-					if( comp is Renderer ) {
+#if NGUI_USED
+					if( search_type == typeof(UISprite) ) {
+						UIAtlas atlas = (obj as GameObject).GetComponent<UIAtlas>();
+						if( atlas == (comp as UISprite).atlas ) {
+							objs.Add( ori );
+							break;
+						}
+					} else if( search_type == typeof(UILabel) ) {
+						UILabel label = comp as UILabel;
+						if( obj is Font ) {
+							if( obj == label.trueTypeFont ) {
+								objs.Add( ori );
+							}
+						} else {
+							UIFont font = (obj as GameObject).GetComponent<UIFont>();
+							if( (font != null) && (font == label.bitmapFont) ) {
+								objs.Add( ori );
+							}
+						}
+					} else if( search_type == typeof(UIWidget) ) {
+						UIWidget widget;
+						if( ((widget = (comp as UIWidget)) != null) && (obj == widget.material) ) {
+							objs.Add( ori );
+							break;
+						}
+					}
+#endif
+
+					if( search_type == typeof(Renderer) ) {
 						Renderer render = comp as Renderer;
 
 						Material mat;
@@ -592,11 +620,7 @@ public class FindUsingObjectEditor : EditorWindow {
 								objs.Add( ori );
 							}
 						}
-					} else if( comp is MonoBehaviour ) {
-						if( obj.name.CompareTo( comp.GetType().Name ) == 0 ) {
-							objs.Add( ori );
-						}
-					} else if( comp is Animation ) {
+					} else if( search_type == typeof(Animation) ) {
 						if( obj is AnimationClip ) {
 							foreach( AnimationState state in (Animation)comp ) {
 								if( (state != null) && (obj == state.clip) ) {
@@ -605,7 +629,7 @@ public class FindUsingObjectEditor : EditorWindow {
 								}
 							}
 						}
-					} else if( comp is Animator ) {
+					} else if( search_type == typeof(Animator) ) {
 						if( obj is AnimationClip ) {
 							AnimationClip [] clips;
 							RuntimeAnimatorController rac = (comp as Animator).runtimeAnimatorController as RuntimeAnimatorController;
@@ -622,39 +646,15 @@ public class FindUsingObjectEditor : EditorWindow {
 								objs.Add( ori );
 							}
 						}
-					} else if( comp is AudioSource ) {
+					} else if( search_type == typeof(AudioSource) ) {
 						AudioSource audio = comp as AudioSource;
 						if( obj == audio.clip ) {
 							objs.Add( ori );
 						}
-					} else {
-#if NGUI_USED
-						if( comp is UIWidget ) {
-							UIWidget widget;
-							if( ((widget = (comp as UIWidget)) != null) && (obj == widget.material) ) {
-								objs.Add( ori );
-								break;
-							}
-						} else if( comp is UISprite ) {
-							UIAtlas atlas = (obj as GameObject).GetComponent<UIAtlas>();
-							if( atlas == (comp as UISprite).atlas ) {
-								objs.Add( ori );
-								break;
-							}
-						} else if( comp is UILabel ) {
-							UILabel label = comp as UILabel;
-							if( obj is Font ) {
-								if( obj == label.trueTypeFont ) {
-									objs.Add( ori );
-								}
-							} else {
-								UIFont font = (obj as GameObject).GetComponent<UIFont>();
-								if( (font != null) && (font == label.bitmapFont) ) {
-									objs.Add( ori );
-								}
-							}
+					} else if( comp is MonoBehaviour ) {
+						if( obj.name.CompareTo( comp.GetType().Name ) == 0 ) {
+							objs.Add( ori );
 						}
-#endif
 					}
 				}
 			}
