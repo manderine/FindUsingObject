@@ -1,4 +1,4 @@
-﻿#define NGUI_USED
+﻿//#define NGUI_USED
 
 using UnityEngine;
 using UnityEditor;
@@ -68,7 +68,13 @@ public class FindUsingObjectEditor : EditorWindow {
 				if( fi.Extension.CompareTo( ".meta" ) == 0 ) {
 					continue;
 				}
-				string str = _DirectoryReplace( fi.DirectoryName + "/" ) + Path.GetFileNameWithoutExtension( fi.Name ) + fi.Extension;
+
+				string notextension = Path.GetFileNameWithoutExtension( fi.Name );
+				if( notextension == this.GetType().Name ) {
+					continue;
+				}
+
+				string str = _DirectoryReplace( fi.DirectoryName + "/" ) + notextension + fi.Extension;
 				lst.Add( str );
 			}
 			fis = null;
@@ -128,7 +134,7 @@ public class FindUsingObjectEditor : EditorWindow {
 			_Oris.Clear();
 			break;
 		case PROC_TYPE.LOAD_DATA_LIST :
-			int count = _PathList.Count / 9;
+			int count = Mathf.Max( 1, _PathList.Count / 9 );
 			int next = Mathf.Min( _PathList.Count, _Progress + count );
 
 			//GameObject ori;
