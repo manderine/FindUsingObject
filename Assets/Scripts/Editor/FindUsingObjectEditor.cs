@@ -22,8 +22,16 @@ public class FindUsingObjectEditor : EditorWindow {
 		SEARCH_COMPLETE,
 	}
 
+	public enum PROC_KIND {
+		BASIC = 0,
+		NOT_GAMEOBJECT
+	}
+
 	Object _SelectObject = null;
     Object _FindObject = null;
+	string _SelectName = "";
+	int _is_select_lock = 0;
+	int _is_sprite_lock = 0;
 
     Vector2 _Scroll = Vector2.zero;
 	List<Object> _Oris = new List<Object>();
@@ -33,6 +41,7 @@ public class FindUsingObjectEditor : EditorWindow {
 	List<Component> _Components = new List<Component>();
 
 	PROC_TYPE _Type = PROC_TYPE.NONE;
+	PROC_KIND _Kind = PROC_KIND.BASIC;
 	int _Progress = 0;
 
 	[MenuItem("jTools/Find Using Object Editor.", priority = 202)]
@@ -108,7 +117,9 @@ public class FindUsingObjectEditor : EditorWindow {
 	}
 
 	void OnGUI() {
-        _SelectObject = Selection.activeObject;
+		if( _is_select_lock == 0 ) {
+			_SelectObject = Selection.activeObject;
+		}
 
 		float x = 0, y = 0, w = Screen.width, h = Screen.height - 23;
 		DrawWindow( x, y, w, h );
@@ -289,7 +300,7 @@ public class FindUsingObjectEditor : EditorWindow {
 	}
 
 	void DrawWindow( float x, float y, float w, float h ) {
-        float hh = 33;
+        float hh = 60;
         DrawBasicInfo( x, y, w, hh );
         y += hh;
         h -= hh;
@@ -309,6 +320,18 @@ public class FindUsingObjectEditor : EditorWindow {
 		EditorGUI.LabelField (rt, label, style);
 	}
 
+	string GUI_TextField( Rect rt, string label, string data, float labelSize ) {
+		float w = rt.width;
+		if( labelSize > 0 ) {
+			rt.width = labelSize;
+			GUI_LabelField( rt, label );
+		}
+		
+		rt.x += labelSize;
+		rt.width = w - labelSize;
+		return EditorGUI.TextField( rt, data );
+	}
+
 	Object GUI_ObjectField( Rect rt, string label, Object data, System.Type type, float labelSize ) {
 		float w = rt.width;
 		if( labelSize > 0 ) {
@@ -320,6 +343,14 @@ public class FindUsingObjectEditor : EditorWindow {
 		rt.width = w - labelSize;
 		return EditorGUI.ObjectField( rt, data, type, false );
 	}
+	
+	int GUI_BoolField( Rect rt, string label, int data ) {
+		bool bData = (data != 0)?true:false;
+		if( EditorGUI.ToggleLeft( rt, label, bData ) == true ) {
+			return 1;
+		}
+		return 0;
+	}
 
     void DrawBasicInfo( float x, float y, float w, float h ) {
         Rect rt = new Rect( x, y, w, h );
@@ -329,7 +360,7 @@ public class FindUsingObjectEditor : EditorWindow {
         float yy = y + 5;
         float ww = 300;
         float hh = 20;
-        float wwSize = 10;
+        float wwSize = 10, hhSize = 5;
         float labelSize = 120;
 
 		rt.Set( xx, yy, ww, hh );
@@ -338,6 +369,42 @@ public class FindUsingObjectEditor : EditorWindow {
         } else {
             GUI_LabelField( rt, "Not Found Object !!" );
         }
+
+		if( (_SelectObject != null) && (_SelectObject is GameObject) ) {
+#if NGUI_USED
+			UIAtlas atlas = (_SelectObject as GameObject).GetComponent<UIAtlas>();
+			if( atlas != null ) {
+				if( _is_sprite_lock == 1 ) {
+					if( Selection.activeObject != null ) {
+						_SelectName = Selection.activeObject.name;
+					}
+				}
+
+				rt.Set( xx, yy + hh + hhSize, ww, hh );
+				_SelectName = GUI_TextField( rt, "Sprite Name : ",   _SelectName, labelSize );
+
+				if( _is_select_lock == 1 ) {
+					Rect rt2 = new Rect( xx + rt.width + wwSize, rt.y, 100, hh );
+					_is_sprite_lock = GUI_BoolField( rt2, "is Sprite Lock", _is_sprite_lock );
+				} else {
+					_is_sprite_lock = 0;
+				}
+			} else {
+				_is_sprite_lock = 0;
+				_SelectName = "";
+			}
+#else
+			_is_sprite_lock = 0;
+			_SelectName = "";
+#endif
+		} else {
+			_is_sprite_lock = 0;
+			_SelectName = "";
+		}
+		xx += (rt.width + wwSize);
+
+		rt.Set( xx, yy, 100, hh );
+		_is_select_lock = GUI_BoolField( rt, "is Select Lock", _is_select_lock );
 		xx += (rt.width + wwSize);
 
 		rt.Set( xx, yy, ww, hh );
@@ -348,10 +415,10 @@ public class FindUsingObjectEditor : EditorWindow {
         }
 		xx += (rt.width + wwSize);
 
-		xx = x + w - 100;
-		ww = 100;
+		xx = x + w - 450;
+		ww = 150;
 
-        rt.Set( xx, yy, ww, hh );
+		rt.Set( xx, yy + hh, ww, hh );
         if( GUI.Button( rt, "Find" ) ) {
             GUI.FocusControl( "Find" );
 
@@ -360,10 +427,35 @@ public class FindUsingObjectEditor : EditorWindow {
 			} else {
 				_Type = PROC_TYPE.SEARCH_START;
 			}
+			_Kind = PROC_KIND.BASIC;
 			_FindObject = _SelectObject;
 			_Objs.Clear();
         }
-        xx += ww;
+		xx += ww;
+
+		rt.Set( xx, yy + hh, ww, hh );
+        if( GUI.Button( rt, "Find(not prefab)" ) ) {
+            GUI.FocusControl( "Find(not prefab)" );
+
+			if( _PathList.Count == 0 ) {
+				_Type = PROC_TYPE.LOAD_START;
+			} else {
+				_Type = PROC_TYPE.SEARCH_START;
+			}
+			_Kind = PROC_KIND.NOT_GAMEOBJECT;
+			_FindObject = _SelectObject;
+			_Objs.Clear();
+        }
+		xx += ww;
+
+		rt.Set( xx, yy + hh, ww, hh );
+        if( GUI.Button( rt, "Select All" ) ) {
+            GUI.FocusControl( "Select All" );
+
+			if( _Objs.Count > 0 ) {
+				Selection.objects = _Objs.ToArray();
+			}
+        }
     }
 
     void DrawDetailInfo( float x, float y, float w, float h ) {
@@ -532,7 +624,7 @@ public class FindUsingObjectEditor : EditorWindow {
 				}
 			}
 
-			if( ori_type != typeof(GameObject) ) {
+			if( (ori_type != typeof(GameObject)) || (_Kind == PROC_KIND.NOT_GAMEOBJECT) ) {
 				continue;
 			}
 
@@ -562,8 +654,15 @@ public class FindUsingObjectEditor : EditorWindow {
 					if( search_type == typeof(UISprite) ) {
 						UIAtlas atlas = (obj as GameObject).GetComponent<UIAtlas>();
 						if( atlas == (comp as UISprite).atlas ) {
-							objs.Add( ori );
-							break;
+							if( _SelectName.Length > 0 ) {
+								if(  _SelectName.CompareTo( (comp as UISprite).spriteName ) == 0 ) {
+									objs.Add( ori );
+									break;
+								}
+							} else {
+								objs.Add( ori );
+								break;
+							}
 						}
 					} else if( search_type == typeof(UILabel) ) {
 						UILabel label = comp as UILabel;
